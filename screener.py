@@ -7,11 +7,35 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID   = os.getenv("CHAT_ID")
 COIN_IDS  = os.getenv("COIN_IDS", "").strip()
 
-# Eşikler (Secrets'tan değiştirilebilir)
-H24_MIN = float(os.getenv("H24_MIN", "0.0"))   # 24h en az % (pozitif trend)
-H1_MIN  = float(os.getenv("H1_MIN", "-0.5"))  # 1h alt sınır
-H1_MAX  = float(os.getenv("H1_MAX", "1.0"))   # 1h üst sınır
-TOPK    = int(os.getenv("TOPK", "8"))         # kaç adayı bildir
+def get_float_env(name, default):
+    val = os.getenv(name, "")
+    if val is None:
+        return default
+    val = val.strip()
+    if val == "":
+        return default
+    try:
+        return float(val)
+    except ValueError:
+        return default
+
+def get_int_env(name, default):
+    val = os.getenv(name, "")
+    if val is None:
+        return default
+    val = val.strip()
+    if val == "":
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+# Eşikler (Secrets/Variables boş olsa da defaulta düşecek)
+H24_MIN = get_float_env("H24_MIN", 0.0)   # 24h en az % (pozitif trend)
+H1_MIN  = get_float_env("H1_MIN", -0.5)   # 1h alt sınır
+H1_MAX  = get_float_env("H1_MAX", 1.0)    # 1h üst sınır
+TOPK    = get_int_env("TOPK", 8)          # kaç adayı bildir
 
 assert BOT_TOKEN and CHAT_ID, "BOT_TOKEN/CHAT_ID yok (GitHub Secrets'a ekleyin)."
 assert COIN_IDS, "COIN_IDS boş (GitHub Secrets'a CoinGecko id listesi ekleyin)."
@@ -71,7 +95,10 @@ def build_message(cand_df: pd.DataFrame, all_count: int) -> str:
     return hdr + body + meta
 
 def send_telegram(text: str):
-    requests.post(TG_URL, json={"chat_id": CHAT_ID, "text": text, "disable_web_page_preview": True}, timeout=20)
+    try:
+        requests.post(TG_URL, json={"chat_id": CHAT_ID, "text": text, "disable_web_page_preview": True}, timeout=20)
+    except requests.RequestException:
+        pass
 
 def main():
     df = cg_markets(COIN_IDS)
