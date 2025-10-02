@@ -36,5 +36,9 @@ jobs:
           PB_H24_MIN: ${{ secrets.PB_H24_MIN }}
           PB_H1_MIN:  ${{ secrets.PB_H1_MIN }}
           PB_H1_MAX:  ${{ secrets.PB_H1_MAX }}
+          ENTRY_SW_MIN: ${{ secrets.ENTRY_SW_MIN }}
+          PB_STABLE_BAND: ${{ secrets.PB_STABLE_BAND }}
+          SL_PCT: ${{ secrets.SL_PCT }}
+          TP_PCT: ${{ secrets.TP_PCT }}
         run: |
           python screener.py
