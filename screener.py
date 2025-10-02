@@ -22,27 +22,27 @@ def _get_int(name, default):
         return default
 
 # —— EŞİKLER (opsiyonel; boşsa default) ————————————————
-H24_MIN   = _get_float("H24_MIN", 2.0)           # 24h min %
-H1_MIN    = _get_float("H1_MIN", -0.5)           # 1h alt sınır (SW)
-H1_MAX    = _get_float("H1_MAX",  1.0)           # 1h üst sınır (SW)
-TOPK      = _get_int  ("TOPK",     6)            # aday sayısı
-VOL24_MIN = _get_float("VOL24_MIN", 200_000_000) # min. 24h hacim (USD)
+H24_MIN   = _get_float("H24_MIN", 2.0)
+H1_MIN    = _get_float("H1_MIN", -0.5)
+H1_MAX    = _get_float("H1_MAX",  1.0)
+TOPK      = _get_int  ("TOPK",     6)
+VOL24_MIN = _get_float("VOL24_MIN", 200_000_000)
 
-PB_H24_MIN = _get_float("PB_H24_MIN", 0.0)       # Pullback 24h min
-PB_H1_MIN  = _get_float("PB_H1_MIN", -1.2)       # Pullback 1h alt
-PB_H1_MAX  = _get_float("PB_H1_MAX", -0.05)      # Pullback 1h üst
+PB_H24_MIN = _get_float("PB_H24_MIN", 0.0)
+PB_H1_MIN  = _get_float("PB_H1_MIN", -1.2)
+PB_H1_MAX  = _get_float("PB_H1_MAX", -0.05)
 
 # —— SİNYAL AYARLARI ———————————————————————————————————————
-ENTRY_SW_MIN     = _get_float("ENTRY_SW_MIN", 0.20)  # SW BUY-NOW eşiği (1h %)
-PB_STABLE_BAND   = _get_float("PB_STABLE_BAND", 0.20) # Pullback stabilize bandı (±%)
-SL_PCT           = _get_float("SL_PCT", 1.2)     # mesaj amaçlı bilgilendirme
-TP_PCT           = _get_float("TP_PCT", 2.0)     # mesaj amaçlı bilgilendirme
+ENTRY_SW_MIN     = _get_float("ENTRY_SW_MIN", 0.20)
+PB_STABLE_BAND   = _get_float("PB_STABLE_BAND", 0.20)
+SL_PCT           = _get_float("SL_PCT", 1.2)
+TP_PCT           = _get_float("TP_PCT", 2.0)
 
 assert BOT_TOKEN and CHAT_ID, "BOT_TOKEN/CHAT_ID yok (Secrets kısmına ekleyin)."
 assert COIN_IDS, "COIN_IDS boş (CoinGecko id listesi)."
 
 TG_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-HEADERS = {"Accept": "application/json","User-Agent": "second-wave-screener/1.3-signal (+github-actions)"}
+HEADERS = {"Accept": "application/json","User-Agent": "second-wave-screener/1.3-signal-fixed (+github-actions)"}
 
 def cg_markets(ids_csv: str) -> pd.DataFrame:
     ids = [x.strip() for x in ids_csv.split(",") if x.strip()]
@@ -68,17 +68,8 @@ def cg_markets(ids_csv: str) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 def _clean(df: pd.DataFrame) -> pd.DataFrame:
-    need = {
-        "id","symbol","current_price",
-        "price_change_percentage_1h_in_currency",
-        "price_change_percentage_24h_in_currency",
-        "total_volume"
-    }
-    miss = need - set(df.columns)
-    if miss:
-        raise RuntimeError(f"Eksik kolonlar: {miss}")
     df = df.copy().fillna(0)
-    df = df[df["total_volume"] >= VOL24_MIN]  # likidite filtresi
+    df = df[df["total_volume"] >= VOL24_MIN]
     return df
 
 def _score(df: pd.DataFrame) -> pd.DataFrame:
@@ -131,13 +122,16 @@ def _signal_pb(h1):
     return ""
 
 def build_message(df, sw, pb) -> str:
-    parts = []
-    parts.append(f"📊 Second Wave Screener — Sinyalli Sürüm
-Eşikler: 24h≥{H24_MIN}%, 1h∈[{H1_MIN},{H1_MAX}] | PB 1h∈[{PB_H1_MIN},{PB_H1_MAX}] | VOL24_MIN=${VOL24_MIN:,.0f} | TOPK={TOPK}
-Sinyal: BUY-NOW (SW) ≥ +{ENTRY_SW_MIN:.2f}% | BUY-PB band ±{PB_STABLE_BAND:.2f}% | SL {SL_PCT:.1f}% / TP {TP_PCT:.1f}%")
+    header = (f"📊 Second Wave Screener — Sinyalli Sürüm | "
+              f"Eşikler: 24h≥{H24_MIN}%, 1h∈[{H1_MIN},{H1_MAX}] | "
+              f"PB 1h∈[{PB_H1_MIN},{PB_H1_MAX}] | VOL24_MIN=${VOL24_MIN:,.0f} | TOPK={TOPK} | "
+              f"Sinyal: BUY-NOW (SW) ≥ +{ENTRY_SW_MIN:.2f}% | "
+              f"BUY-PB band ±{PB_STABLE_BAND:.2f}% | SL {SL_PCT:.1f}% / TP {TP_PCT:.1f}%")
+
+    parts = [header]
+
     if not sw.empty:
-        parts.append("
-🔥 İkinci Dalga Adayları:")
+        parts.append("\n🔥 İkinci Dalga Adayları:")
         for _, r in sw.iterrows():
             h1 = r["price_change_percentage_1h_in_currency"]
             sig = _signal_sw(h1)
@@ -146,11 +140,10 @@ Sinyal: BUY-NOW (SW) ≥ +{ENTRY_SW_MIN:.2f}% | BUY-PB band ±{PB_STABLE_BAND:.2
                 line = line + f"  ← {sig}"
             parts.append(line)
     else:
-        parts.append("
-🔥 İkinci Dalga Adayları: (yok)")
+        parts.append("\n🔥 İkinci Dalga Adayları: (yok)")
+
     if not pb.empty:
-        parts.append("
-🔁 Pullback Adayları:")
+        parts.append("\n🔁 Pullback Adayları:")
         for _, r in pb.iterrows():
             h1 = r["price_change_percentage_1h_in_currency"]
             sig = _signal_pb(h1)
@@ -159,10 +152,9 @@ Sinyal: BUY-NOW (SW) ≥ +{ENTRY_SW_MIN:.2f}% | BUY-PB band ±{PB_STABLE_BAND:.2
                 line = line + f"  ← {sig}"
             parts.append(line)
     else:
-        parts.append("
-🔁 Pullback Adayları: (yok)")
-    return "
-".join(parts)[:3900]
+        parts.append("\n🔁 Pullback Adayları: (yok)")
+
+    return "\n".join(parts)[:3900]
 
 def send_tg(text: str):
     try:
