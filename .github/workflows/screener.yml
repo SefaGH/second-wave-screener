@@ -1,8 +1,9 @@
+
 name: Second Wave Screener
 
 on:
   schedule:
-    - cron: "7 * * * *"   # Her saat :07'de çalışır
+    - cron: "7 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -31,5 +32,9 @@ jobs:
           H1_MIN:   ${{ secrets.H1_MIN }}
           H1_MAX:   ${{ secrets.H1_MAX }}
           TOPK:     ${{ secrets.TOPK }}
+          VOL24_MIN: ${{ secrets.VOL24_MIN }}
+          PB_H24_MIN: ${{ secrets.PB_H24_MIN }}
+          PB_H1_MIN:  ${{ secrets.PB_H1_MIN }}
+          PB_H1_MAX:  ${{ secrets.PB_H1_MAX }}
         run: |
           python screener.py
